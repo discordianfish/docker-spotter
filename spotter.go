@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/dotcloud/docker"
 	"github.com/dotcloud/docker/utils"
 	"io"
 	"io/ioutil"
@@ -29,6 +28,10 @@ var (
 	hm     hookMap
 )
 
+type Container struct {
+	Name string
+}
+
 // id, event, command
 type hookMap map[string]map[string][]string
 
@@ -50,13 +53,13 @@ func (hm hookMap) Set(str string) error {
 	return nil
 }
 
-func getContainer(id string) (*docker.Container, error) {
+func getContainer(id string) (*Container, error) {
 	resp, err := request("/containers/" + id + "/json")
 	if err != nil {
 		return nil, fmt.Errorf("Couldn't find container %s: %s", id, err)
 	}
 	defer resp.Body.Close()
-	container := &docker.Container{}
+	container := &Container{}
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
