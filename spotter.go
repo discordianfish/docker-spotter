@@ -33,7 +33,7 @@ type Container struct {
 }
 
 // id, event, command
-type hookMap map[string]map[string][]string
+type hookMap map[string]map[string][][]string
 
 func (hm hookMap) String() string { return "" }
 func (hm hookMap) Set(str string) error {
@@ -47,9 +47,9 @@ func (hm hookMap) Set(str string) error {
 	log.Printf("= %s:%s:%s", id, event, command)
 
 	if hm[id] == nil {
-		hm[id] = make(map[string][]string)
+		hm[id] = make(map[string][][]string)
 	}
-	hm[id][event] = command
+	hm[id][event] = append(hm[id][event], command)
 	return nil
 }
 
@@ -102,6 +102,7 @@ func main() {
 	hm = hookMap{}
 	flag.Var(&hm, "e", "specify hook map in format container:event:command[:arg1:arg2...], arg == {{ID}} will be replaced by container ID")
 	flag.Parse()
+	log.Printf("%#v", hm)
 	if len(hm) == 0 {
 		fmt.Fprintf(os.Stderr, "Please set hooks via -e flag\n")
 		flag.PrintDefaults()
@@ -152,27 +153,32 @@ func watch(r io.Reader) {
 				continue
 			}
 		}
-		c := events[event.Status]
-		if len(c) == 0 {
+		commands := events[event.Status]
+		if len(commands) == 0 {
 			continue
 		}
-		args := []string{}
-		for _, arg := range c[1:] {
-			if arg == "{{ID}}" {
-				arg = event.ID
+		for _, command := range commands {
+			if len(command) == 0 {
+				continue
 			}
-			args = append(args, arg)
-		}
+			args := []string{}
+			for _, arg := range command[1:] {
+				if arg == "{{ID}}" {
+					arg = event.ID
+				}
+				args = append(args, arg)
+			}
 
-		command := exec.Command(c[0], args...)
-		log.Printf("> %s [ %v ]", command.Path, command.Args[1:])
-		out, err := command.CombinedOutput()
-		if err != nil {
-			log.Printf("! ERROR %s: %s", err, out)
-			continue
-		}
-		if out != nil {
-			log.Printf("- %s", out)
+			command := exec.Command(command[0], args...)
+			log.Printf("> %s [ %v ]", command.Path, command.Args[1:])
+			out, err := command.CombinedOutput()
+			if err != nil {
+				log.Printf("! ERROR %s: %s", err, out)
+				continue
+			}
+			if out != nil {
+				log.Printf("- %s", out)
+			}
 		}
 	}
 }
