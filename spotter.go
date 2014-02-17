@@ -102,7 +102,6 @@ func main() {
 	hm = hookMap{}
 	flag.Var(&hm, "e", "specify hook map in format container:event:command[:arg1:arg2...], arg == {{ID}} will be replaced by container ID")
 	flag.Parse()
-	log.Printf("%#v", hm)
 	if len(hm) == 0 {
 		fmt.Fprintf(os.Stderr, "Please set hooks via -e flag\n")
 		flag.PrintDefaults()
