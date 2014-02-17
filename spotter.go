@@ -21,10 +21,12 @@ import (
 const APIVERSION = "1.8"
 
 var (
-	proto = flag.String("proto", "unix", "protocol to use")
-	addr  = flag.String("addr", "/var/run/docker.sock", "address to connect to")
-	since = flag.String("since", "1", "watch for events since given value in seconds since epoch")
-	debug = flag.Bool("v", false, "verbose logging")
+	proto  = flag.String("proto", "unix", "protocol to use")
+	addr   = flag.String("addr", "/var/run/docker.sock", "address to connect to")
+	since  = flag.String("since", "1", "watch for events since given value in seconds since epoch")
+	replay = flag.String("replay", "", "file to use to simulate/replay events from. Format = docker events")
+	debug  = flag.Bool("v", false, "verbose logging")
+	hm     hookMap
 )
 
 // id, event, command
@@ -94,7 +96,7 @@ func request(path string) (*http.Response, error) {
 }
 
 func main() {
-	hm := hookMap{}
+	hm = hookMap{}
 	flag.Var(&hm, "e", "specify hook map in format container:event:command[:arg1:arg2...], arg == {{ID}} will be replaced by container ID")
 	flag.Parse()
 	if len(hm) == 0 {
@@ -111,8 +113,19 @@ func main() {
 		log.Fatal(err)
 	}
 	defer resp.Body.Close()
+	if *replay != "" {
+		file, err := os.Open(*replay)
+		if err != nil {
+			log.Fatalf("Couldn't replay from file %s: %s", *replay, err)
+		}
+		watch(file)
+	} else {
+		watch(resp.Body)
+	}
+}
 
-	dec := json.NewDecoder(resp.Body)
+func watch(r io.Reader) {
+	dec := json.NewDecoder(r)
 	for {
 		event := utils.JSONMessage{}
 		if err := dec.Decode(&event); err != nil {
