@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"text/template"
 )
 
 const APIVERSION = "1.8"
@@ -33,7 +35,7 @@ type Container struct {
 }
 
 // id, event, command
-type hookMap map[string]map[string][][]string
+type hookMap map[string]map[string][][]*template.Template
 
 func (hm hookMap) String() string { return "" }
 func (hm hookMap) Set(str string) error {
@@ -43,14 +45,29 @@ func (hm hookMap) Set(str string) error {
 	}
 	id := parts[0]
 	event := parts[1]
-	command := parts[2:]
-	log.Printf("= %s:%s:%s", id, event, command)
+	command, err := parseTemplates(parts[2:])
+	if err != nil {
+		return err
+	}
+	log.Printf("= %s:%s:%s", id, event, str)
 
 	if hm[id] == nil {
-		hm[id] = make(map[string][][]string)
+		hm[id] = make(map[string][][]*template.Template)
 	}
 	hm[id][event] = append(hm[id][event], command)
 	return nil
+}
+
+func parseTemplates(templates []string) ([]*template.Template, error) {
+	tl := []*template.Template{}
+	for i, t := range templates {
+		tmpl, err := template.New(fmt.Sprintf("t-%d", i)).Parse(t)
+		if err != nil {
+			return nil, err
+		}
+		tl = append(tl, tmpl)
+	}
+	return tl, nil
 }
 
 func getContainer(id string) (*Container, error) {
@@ -100,7 +117,7 @@ func request(path string) (*http.Response, error) {
 
 func main() {
 	hm = hookMap{}
-	flag.Var(&hm, "e", "specify hook map in format container:event:command[:arg1:arg2...], arg == {{ID}} will be replaced by container ID")
+	flag.Var(&hm, "e", "Hook map with template text executed in docker event (see JSONMessage) context, format: container:event:command[:arg1:arg2...]")
 	flag.Parse()
 	if len(hm) == 0 {
 		fmt.Fprintf(os.Stderr, "Please set hooks via -e flag\n")
@@ -161,14 +178,15 @@ func watch(r io.Reader) {
 				continue
 			}
 			args := []string{}
-			for _, arg := range command[1:] {
-				if arg == "{{ID}}" {
-					arg = event.ID
+			for _, template := range command {
+				buf := bytes.NewBufferString("")
+				if err := template.Execute(buf, events); err != nil {
+					log.Fatalf("Couldn't render template: %s", err)
 				}
-				args = append(args, arg)
+				args = append(args, buf.String())
 			}
 
-			command := exec.Command(command[0], args...)
+			command := exec.Command(args[0], args[1:]...)
 			log.Printf("> %s [ %v ]", command.Path, command.Args[1:])
 			out, err := command.CombinedOutput()
 			if err != nil {
