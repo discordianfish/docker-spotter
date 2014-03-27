@@ -31,7 +31,9 @@ var (
 )
 
 type Container struct {
-	Name string
+	Name  string
+	ID    string
+	Event utils.JSONMessage
 }
 
 // id, event, command
@@ -72,10 +74,10 @@ func parseTemplates(templates []string) ([]*template.Template, error) {
 	return tl, nil
 }
 
-func getContainer(id string) (*Container, error) {
-	resp, err := request("/containers/" + id + "/json")
+func getContainer(event utils.JSONMessage) (*Container, error) {
+	resp, err := request("/containers/" + event.ID + "/json")
 	if err != nil {
-		return nil, fmt.Errorf("Couldn't find container %s: %s", id, err)
+		return nil, fmt.Errorf("Couldn't find container for event %#v: %s", event, err)
 	}
 	defer resp.Body.Close()
 	container := &Container{}
@@ -83,6 +85,8 @@ func getContainer(id string) (*Container, error) {
 	if err != nil {
 		return nil, err
 	}
+	container.Event = event
+	container.ID = event.ID
 	return container, json.Unmarshal(body, &container)
 }
 
@@ -159,7 +163,7 @@ func watch(r io.Reader) {
 		if *debug {
 			log.Printf("< %s:%s", event.ID, event.Status)
 		}
-		container, err := getContainer(event.ID)
+		container, err := getContainer(event)
 		if err != nil {
 			log.Printf("Warning: Couldn't get container %s: %s", event.ID, err)
 			continue
@@ -182,7 +186,7 @@ func watch(r io.Reader) {
 			args := []string{}
 			for _, template := range command {
 				buf := bytes.NewBufferString("")
-				if err := template.Execute(buf, events); err != nil {
+				if err := template.Execute(buf, container); err != nil {
 					log.Fatalf("Couldn't render template: %s", err)
 				}
 				args = append(args, buf.String())
