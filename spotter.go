@@ -44,17 +44,19 @@ func (hm hookMap) Set(str string) error {
 		return fmt.Errorf("Couldn't parse %s", str)
 	}
 	id := parts[0]
-	event := parts[1]
+	events := strings.Split(parts[1], ",")
 	command, err := parseTemplates(parts[2:])
 	if err != nil {
 		return err
 	}
-	log.Printf("= %s:%s:%s", id, event, str)
 
 	if hm[id] == nil {
 		hm[id] = make(map[string][][]*template.Template)
 	}
-	hm[id][event] = append(hm[id][event], command)
+	for _, event := range events {
+		log.Printf("= %s:%s:%s", id, event, str)
+		hm[id][event] = append(hm[id][event], command)
+	}
 	return nil
 }
 
@@ -117,7 +119,7 @@ func request(path string) (*http.Response, error) {
 
 func main() {
 	hm = hookMap{}
-	flag.Var(&hm, "e", "Hook map with template text executed in docker event (see JSONMessage) context, format: container:event:command[:arg1:arg2...]")
+	flag.Var(&hm, "e", "Hook map with template text executed in docker event (see JSONMessage) context, format: container:event[,event]:command[:arg1:arg2...]")
 	flag.Parse()
 	if len(hm) == 0 {
 		fmt.Fprintf(os.Stderr, "Please set hooks via -e flag\n")
