@@ -30,3 +30,14 @@ container named 'pxe-server' starts or restarts and `echo gone` when it stops.
       -e 'pxe-server:stop:echo:gone'
 
 
+### tcp proto and wildcards for containers
+
+This example uses a tcp socket and specifies a wildcard to trigger the event on any container.
+The idea behind this is, to create a small program that assigns IP addresses depending on the container name.
+
+    ./docker-spotter -addr=localhost:6000 -proto="tcp"
+        -since=0
+        -e '*:start:echo:{{.Name}}:up'
+    2014/07/01 10:30:36 = *:start:*:start:echo:{{.Name}}:up
+    2014/07/01 10:30:39 > /usr/bin/echo [ [/test up] ]
+    2014/07/01 10:30:39 - /test up
