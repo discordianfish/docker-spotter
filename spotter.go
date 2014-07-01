@@ -172,6 +172,9 @@ func watch(r io.Reader) {
 		if events == nil {
 			events = hm[strings.TrimLeft(container.Name, "/")]
 			if events == nil {
+				events = hm["*"]
+			}
+			if events == nil {
 				continue
 			}
 		}
