@@ -19,6 +19,12 @@ rendered with {{.Name}} set to the containers name, {{.ID}} to it's ID
 and {{.Event}} to the [JSONMessage](http://godoc.org/github.com/dotcloud/docker/utils#JSONMessage)
 which triggered the event.
 
+Available events:
+
+- create
+- start
+- stop
+- destroy
 
 ## Example
 
