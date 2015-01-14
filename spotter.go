@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/dotcloud/docker/utils"
 	"io"
 	"io/ioutil"
 	"log"
@@ -17,6 +16,8 @@ import (
 	"os/exec"
 	"strings"
 	"text/template"
+
+	"github.com/docker/docker/utils"
 )
 
 const APIVERSION = "1.8"
