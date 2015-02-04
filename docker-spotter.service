@@ -1,0 +1,13 @@
+[Unit]
+Description=Docker Spotter
+After=docker.socket
+Requires=docker.socket
+
+[Service]
+Type=simple
+EnvironmentFile=/etc/sysconfig/docker-spotter
+ExecStart=/usr/bin/docker-spotter $OPTIONS
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
