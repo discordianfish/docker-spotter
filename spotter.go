@@ -31,10 +31,15 @@ var (
 	hm     hookMap
 )
 
+type ContainerConfig struct {
+	Env []string
+}
+
 type Container struct {
-	Name  string
-	ID    string
-	Event utils.JSONMessage
+	Name   string
+	ID     string
+	Config ContainerConfig
+	Event  utils.JSONMessage
 }
 
 // id, event, command
@@ -171,7 +176,7 @@ func watch(r io.Reader) {
 		}
 		events := hm[event.ID]
 		if events == nil {
-			events = hm[strings.TrimLeft(container.Name, "/")]
+			events = GetEvents(hm, container)
 			if events == nil {
 				events = hm["*"]
 			}
@@ -209,3 +214,32 @@ func watch(r io.Reader) {
 		}
 	}
 }
+
+
+func GetEvents(hooks hookMap, container *Container) map[string][][]*template.Template {
+	name := strings.TrimLeft(container.Name, "/")
+
+	for key, value := range hooks {
+		//if key is key/value pair search it in Env
+		if (strings.Contains(key, "=") && contains(container.Config.Env, key)) {
+			return value
+		//looks like key is container's name
+		} else if strings.HasPrefix(name, key) {
+			return value
+		}
+	}
+
+	return nil
+}
+
+//Check if source array contains target string
+func contains(source []string, target string) bool {
+	for _, value := range source {
+		if (value == target) {
+			return true
+		}
+	}
+
+	return false
+}
+

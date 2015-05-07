@@ -35,7 +35,6 @@ container named 'pxe-server' starts or restarts and `echo gone` when it stops.
       -e 'pxe-server:start,restart:pipework:eth0:{{.ID}}:192.168.242.1/24' \
       -e 'pxe-server:stop:echo:gone'
 
-
 ### tcp proto and wildcards for containers
 
 This example uses a tcp socket and specifies a wildcard to trigger the event on any container.
@@ -47,3 +46,12 @@ The idea behind this is, to create a small program that assigns IP addresses dep
     2014/07/01 10:30:36 = *:start:*:start:echo:{{.Name}}:up
     2014/07/01 10:30:39 > /usr/bin/echo [ [/test up] ]
     2014/07/01 10:30:39 - /test up
+
+### the environment variable (ENV) key/value pair as the event trigger for container matching.
+
+This example will run `pipework eth0 <id> 192.168.242.1/24` when a
+container has the FOO=BAR environment variable set.
+
+    ./docker-spotter \
+      -e 'FOO=BAR:start,restart:pipework:eth0:{{.ID}}:192.168.242.1/24' \
+      -e 'FOO=BAR:stop:echo:gone'
