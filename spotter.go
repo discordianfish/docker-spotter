@@ -17,7 +17,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/docker/docker/utils"
+	"github.com/docker/docker/pkg/jsonmessage"
+	"github.com/dotcloud/docker/utils"
 )
 
 const APIVERSION = "1.8"
@@ -80,7 +81,7 @@ func parseTemplates(templates []string) ([]*template.Template, error) {
 	return tl, nil
 }
 
-func getContainer(event utils.JSONMessage) (*Container, error) {
+func getContainer(event jsonmessage.JSONMessage) (*Container, error) {
 	resp, err := request("/containers/" + event.ID + "/json")
 	if err != nil {
 		return nil, fmt.Errorf("Couldn't find container for event %#v: %s", event, err)
@@ -159,7 +160,7 @@ func main() {
 func watch(r io.Reader) {
 	dec := json.NewDecoder(r)
 	for {
-		event := utils.JSONMessage{}
+		event := jsonmessage.JSONMessage{}
 		if err := dec.Decode(&event); err != nil {
 			if err == io.EOF {
 				break
@@ -215,15 +216,14 @@ func watch(r io.Reader) {
 	}
 }
 
-
 func GetEvents(hooks hookMap, container *Container) map[string][][]*template.Template {
 	name := strings.TrimLeft(container.Name, "/")
 
 	for key, value := range hooks {
 		//if key is key/value pair search it in Env
-		if (strings.Contains(key, "=") && contains(container.Config.Env, key)) {
+		if strings.Contains(key, "=") && contains(container.Config.Env, key) {
 			return value
-		//looks like key is container's name
+			//looks like key is container's name
 		} else if strings.HasPrefix(name, key) {
 			return value
 		}
@@ -235,11 +235,10 @@ func GetEvents(hooks hookMap, container *Container) map[string][][]*template.Tem
 //Check if source array contains target string
 func contains(source []string, target string) bool {
 	for _, value := range source {
-		if (value == target) {
+		if value == target {
 			return true
 		}
 	}
 
 	return false
 }
-
