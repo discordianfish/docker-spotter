@@ -18,7 +18,6 @@ import (
 	"text/template"
 
 	"github.com/docker/docker/pkg/jsonmessage"
-	"github.com/dotcloud/docker/utils"
 )
 
 const APIVERSION = "1.8"
@@ -40,7 +39,7 @@ type Container struct {
 	Name   string
 	ID     string
 	Config ContainerConfig
-	Event  utils.JSONMessage
+	Event  jsonmessage.JSONMessage
 }
 
 // id, event, command
