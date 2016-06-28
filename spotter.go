@@ -20,7 +20,7 @@ import (
 	"github.com/docker/docker/pkg/jsonmessage"
 )
 
-const APIVERSION = "1.8"
+const APIVERSION = "1.23"
 
 var (
 	proto  = flag.String("proto", "unix", "protocol to use")
@@ -96,8 +96,14 @@ func getContainer(event jsonmessage.JSONMessage) (*Container, error) {
 	return container, json.Unmarshal(body, &container)
 }
 
+// leading slash is expected
 func request(path string) (*http.Response, error) {
-	req, err := http.NewRequest("GET", path, nil)
+	apiPath := fmt.Sprintf("/v%s%s", APIVERSION, path)
+	if *debug {
+		fmt.Printf("making API request: GET %s\n", apiPath)
+	}
+
+	req, err := http.NewRequest("GET", apiPath, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -166,14 +172,35 @@ func watch(r io.Reader) {
 			}
 			log.Fatalf("Couldn't decode message: %s", err)
 		}
+		if event.ID == "" {
+			if *debug {
+				log.Printf("skipping non-container message")
+			}
+
+			continue
+		}
+
 		if *debug {
 			log.Printf("< %s:%s", event.ID, event.Status)
 		}
+		if event.Status == "delete" || event.Status == "destroy" {
+			// we can't get the container if it is destroyed. Trying to do so just
+			// produces noise.
+			if *debug {
+				log.Printf("Skipping %s event for container %s", event.Status, event.ID)
+			}
+			continue
+		}
+
 		container, err := getContainer(event)
 		if err != nil {
 			log.Printf("Warning: Couldn't get container %s: %s", event.ID, err)
 			continue
 		}
+		if *debug {
+			log.Printf("Got container: %+v", container)
+		}
+
 		events := hm[event.ID]
 		if events == nil {
 			events = GetEvents(hm, container)
